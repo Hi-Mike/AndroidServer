@@ -31,7 +31,7 @@ public class WorkThread extends Thread {
             String filePath = parseRequest(source);
             Logger.d("为什么会无缘无故调用。。。");
 
-            FileHandler fileHandler = new FileHandler(socket, filePath);
+            FileHandler fileHandler = new FileHandler(socket, filePath, isWeChat(source));
             fileHandler.handle();
         } catch (IOException e) {
             e.printStackTrace();
@@ -59,5 +59,19 @@ public class WorkThread extends Thread {
             interrupt();
         }
         return "";
+    }
+
+    private boolean isWeChat(BufferedSource source) {
+        String match;
+        try {
+            while ((match = source.readUtf8Line()) != null) {
+                if (match.contains("Mobile MQQBrowser") || match.contains("MicroMessenger")) {
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }

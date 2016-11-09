@@ -5,6 +5,7 @@ import android.text.TextUtils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URLEncoder;
@@ -27,10 +28,12 @@ import okio.Okio;
 public class FileHandler {
     private Socket socket;
     private String filePath;
+    private boolean isWeChatOrQQ;
 
-    public FileHandler(Socket socket, String filePath) {
+    public FileHandler(Socket socket, String filePath, boolean weChat) {
         this.socket = socket;
         this.filePath = filePath;
+        this.isWeChatOrQQ = weChat;
     }
 
     public void handle() {
@@ -85,7 +88,7 @@ public class FileHandler {
                     //当类型未知或者没有后缀
                     if (TextUtils.isEmpty(mime))
                         mime = Constant.MIME_DEFAULT_BINARY;
-//                        OutputStream out = socket.getOutputStream();
+
                     long fileLength = requestRootFile.length();
 
 //                        sink.writeUtf8("HTTP/1.1 200 OK").writeUtf8("\r\n");
@@ -96,16 +99,13 @@ public class FileHandler {
 //                        sink.writeUtf8("Content-Transfer-Encoding: binary").writeUtf8("\r\n\r\n");
                     //设置响应头
                     setDownloadHeader(sink, requestRootFile, fileLength, mime);
-//                        int len;
-//                        byte[] data = new byte[8 * 1024];
-//                        InputStream in = new FileInputStream(requestRootFile);
-//                        while ((len = in.read(data)) != -1) {
-//                            sink.write(data, 0, len);
-//                        }
 
+//                    普通io
+//                        OutputStream out = socket.getOutputStream();
 //                        out.write(sb.toString().getBytes(), 0, sb.toString().length());
 //                        write(requestRootFile, out);
 
+//                    okio
                     sink.writeAll(Okio.source(requestRootFile));
                 }
             } else {//没有权限访问
@@ -115,24 +115,6 @@ public class FileHandler {
             sink.flush();
         } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-
-    private void write(File inputFile, OutputStream outStream) throws IOException {
-        FileInputStream fis = new FileInputStream(inputFile);
-        try {
-            int count;
-            byte[] buffer = new byte[Constant.BUFFER_LENGTH];
-            while ((count = fis.read(buffer)) != -1) {
-                outStream.write(buffer, 0, count);
-            }
-            outStream.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw e;
-        } finally {
-            fis.close();
-            outStream.close();
         }
     }
 
@@ -148,9 +130,10 @@ public class FileHandler {
         sb.append("HTTP/1.1 200 OK\r\n")
                 .append("Content-Length: ").append(fileLength).append("\r\n")
                 .append("Content-Type: ").append(mime).append("\r\n")
-                .append("Content-Description: File Transfer\r\n")
-                .append("Content-Disposition: ").append("attachment;filename=").append(encodeFilename(file)).append("\r\n")
-                .append("Content-Transfer-Encoding: binary").append("\r\n\r\n");
+                .append("Content-Description: File Transfer\r\n");
+        if (isWeChatOrQQ)//是微信qq等时让可以浏览的文件直接浏览
+            sb.append("Content-Disposition: ").append("attachment;filename=").append(encodeFilename(file)).append("\r\n");
+        sb.append("Content-Transfer-Encoding: binary").append("\r\n\r\n");
 
         //在手机端访问时 响应头 不用byte写居然不行。。。
         sink.write(sb.toString().getBytes(), 0, sb.toString().length());
@@ -179,5 +162,42 @@ public class FileHandler {
 
     private String getFilename(File file) {
         return file.isFile() ? file.getName() : file.getName() + ".zip";
+    }
+
+    //用okio写
+    private void write(File inputFile, BufferedSink sink) throws IOException {
+        InputStream in = null;
+        try {
+            in = new FileInputStream(inputFile);
+            int len;
+            byte[] data = new byte[8 * 1024];
+            while ((len = in.read(data)) != -1) {
+                sink.write(data, 0, len);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            in.close();
+            sink.close();
+        }
+    }
+
+    //普通io写
+    private void write(File inputFile, OutputStream outStream) throws IOException {
+        FileInputStream fis = new FileInputStream(inputFile);
+        try {
+            int count;
+            byte[] buffer = new byte[Constant.BUFFER_LENGTH];
+            while ((count = fis.read(buffer)) != -1) {
+                outStream.write(buffer, 0, count);
+            }
+            outStream.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        } finally {
+            fis.close();
+            outStream.close();
+        }
     }
 }
