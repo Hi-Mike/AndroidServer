@@ -131,7 +131,7 @@ public class FileHandler {
                 .append("Content-Length: ").append(fileLength).append("\r\n")
                 .append("Content-Type: ").append(mime).append("\r\n")
                 .append("Content-Description: File Transfer\r\n");
-        if (isWeChatOrQQ)//是微信qq等时让可以浏览的文件直接浏览
+        if (!isWeChatOrQQ)//是微信qq等时让可以浏览的文件直接浏览
             sb.append("Content-Disposition: ").append("attachment;filename=").append(encodeFilename(file)).append("\r\n");
         sb.append("Content-Transfer-Encoding: binary").append("\r\n\r\n");
 
