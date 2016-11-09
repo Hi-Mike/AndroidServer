@@ -74,7 +74,6 @@ public class FileHandler {
                             sink.writeUtf8("</b>");
                     }
                     sink.writeUtf8("</body></html>");
-//                    sink.flush();
                 } else {//下载文件
                     String mime = null;
                     String realPath = requestRootFile.getCanonicalPath();
@@ -82,10 +81,12 @@ public class FileHandler {
                     if (dot >= 0) {
                         //获取文件MIME类型
                         mime = (String) Constant.theMimeTypes.get(realPath.substring(dot + 1).toLowerCase(Locale.ENGLISH));
-                        if (TextUtils.isEmpty(mime))
-                            mime = Constant.MIME_DEFAULT_BINARY;
+                    }
+                    //当类型未知或者没有后缀
+                    if (TextUtils.isEmpty(mime))
+                        mime = Constant.MIME_DEFAULT_BINARY;
 //                        OutputStream out = socket.getOutputStream();
-                        long fileLength = requestRootFile.length();
+                    long fileLength = requestRootFile.length();
 
 //                        sink.writeUtf8("HTTP/1.1 200 OK").writeUtf8("\r\n");
 //                        sink.writeUtf8("Content-Length: ").writeLong(fileLength).writeUtf8("\r\n");
@@ -93,8 +94,8 @@ public class FileHandler {
 //                        sink.writeUtf8("Content-Description: File Transfer").writeUtf8("\r\n");
 //                        sink.writeUtf8("Content-Disposition: ").writeUtf8("attachment;filename=").writeUtf8(encodeFilename(requestRootFile)).writeUtf8("\r\n");
 //                        sink.writeUtf8("Content-Transfer-Encoding: binary").writeUtf8("\r\n\r\n");
-                        //设置响应头
-                        setDownloadHeader(sink, requestRootFile, fileLength, mime);
+                    //设置响应头
+                    setDownloadHeader(sink, requestRootFile, fileLength, mime);
 //                        int len;
 //                        byte[] data = new byte[8 * 1024];
 //                        InputStream in = new FileInputStream(requestRootFile);
@@ -105,8 +106,7 @@ public class FileHandler {
 //                        out.write(sb.toString().getBytes(), 0, sb.toString().length());
 //                        write(requestRootFile, out);
 
-                        sink.writeAll(Okio.source(requestRootFile));
-                    }
+                    sink.writeAll(Okio.source(requestRootFile));
                 }
             } else {//没有权限访问
                 setHeader(sink, "HTTP/1.1 403 Forbidden\r\n", "text/html;charset=UTF-8", Constant.FORBIDDEN.length());
